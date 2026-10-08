@@ -43,6 +43,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\ResolveChildDefinitionsPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
@@ -1177,6 +1178,11 @@ class DoctrineExtensionTest extends TestCase
         $arguments = $container->getDefinition('doctrine.debug_data_holder')->getArguments();
         $this->assertCount(1, $arguments);
         $this->assertSame(['conn3'], $arguments[0]);
+
+        $checker = $container->getDefinition('doctrine.dbal.debug_middleware')->getArgument(3);
+        $this->assertInstanceOf(Reference::class, $checker);
+        $this->assertSame('profiler.is_disabled_state_checker', (string) $checker);
+        $this->assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $checker->getInvalidBehavior());
     }
 
     public function testDefinitionsToLogAndProfile(): void

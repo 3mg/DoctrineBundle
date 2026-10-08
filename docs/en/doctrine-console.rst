@@ -69,3 +69,21 @@ to get help on the ``doctrine:schema:update`` command, run:
 .. code-block:: console
 
     php bin/console doctrine:schema:update --help
+
+Profiling long-running commands
+-------------------------------
+
+With Symfony DoctrineBridge 8.2 or later, Doctrine's debug middleware follows
+Symfony's profiler state. Disabling the profiler stops collecting SQL queries,
+backtraces and Stopwatch periods. Enabling it again resumes collection, including
+for connections and prepared statements created while it was disabled.
+
+This also follows Symfony's default profiler state for console commands. Use
+``--profile`` to collect a command profile, or explicitly enable the profiler
+when collecting and saving a profile in application code.
+
+Older DoctrineBridge versions, or applications without Symfony's profiler state
+checker service, retain the previous collection behavior. For these versions,
+disable ``doctrine.dbal.profiling`` in the command's environment, or run the
+command with ``--no-debug`` when profiling follows ``kernel.debug``. SQL logging
+is configured separately; disabling the profiler does not disable a logger.

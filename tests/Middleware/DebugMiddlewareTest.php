@@ -11,11 +11,60 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Schema\DefaultSchemaManagerFactory;
 use PHPUnit\Framework\TestCase;
+use Symfony\Bridge\Doctrine\Middleware\Debug\Middleware as BridgeDebugMiddleware;
+use Symfony\Component\Stopwatch\Stopwatch;
 
+use function method_exists;
 use function strpos;
 
 class DebugMiddlewareTest extends TestCase
 {
+    public function testProfilerStateControlsQueriesBacktracesAndStopwatch(): void
+    {
+        if (! method_exists(BridgeDebugMiddleware::class, 'setProfilerStateChecker')) {
+            self::markTestSkipped('Requires the DoctrineBridge profiler state checker API.');
+        }
+
+        $disabled      = true;
+        $holder        = new BacktraceDebugDataHolder(['default']);
+        $stopwatch     = new Stopwatch();
+        $configuration = new Configuration();
+        $configuration->setMiddlewares([
+            new DebugMiddleware(
+                $holder,
+                $stopwatch,
+                null,
+                static function () use (&$disabled): bool {
+                    return $disabled;
+                },
+            ),
+        ]);
+        $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true], $configuration);
+        $statement  = $connection->prepare('SELECT ?');
+        $statement->bindValue(1, 42);
+        self::assertSame('42', $statement->executeQuery()->fetchOne());
+        self::assertSame([], $holder->getData());
+        self::assertSame([], $stopwatch->getSectionEvents('__root__'));
+
+        $disabled = false;
+        $statement->executeQuery()->free();
+        self::assertCount(1, $holder->getData()['default']);
+        self::assertNotEmpty($holder->getData()['default'][0]['backtrace']);
+        self::assertCount(1, $stopwatch->getEvent('doctrine')->getPeriods());
+
+        $disabled = true;
+        $statement->executeQuery()->free();
+        self::assertCount(1, $holder->getData()['default']);
+        self::assertCount(1, $stopwatch->getEvent('doctrine')->getPeriods());
+
+        $holder->reset();
+        $stopwatch->reset();
+        $disabled = false;
+        $statement->executeQuery()->free();
+        self::assertCount(1, $holder->getData()['default']);
+        self::assertCount(1, $stopwatch->getEvent('doctrine')->getPeriods());
+    }
+
     public function testData(): void
     {
         $configuration = new Configuration();

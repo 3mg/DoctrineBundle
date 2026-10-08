@@ -34,6 +34,7 @@ return static function (ContainerConfigurator $container): void {
                 service('doctrine.debug_data_holder'),
                 service('debug.stopwatch')->nullOnInvalid(),
                 service('doctrine'),
+                service('profiler.is_disabled_state_checker')->nullOnInvalid(),
             ])
 
         ->set('doctrine.dbal.idle_connection_middleware', IdleConnectionMiddleware::class)
